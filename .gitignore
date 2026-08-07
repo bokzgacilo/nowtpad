@@ -55,5 +55,10 @@ Desktop.ini
 *.deb
 *.rpm
 
+# These are intentionally served by the web landing page.
+!public/downloads/
+!public/downloads/*.dmg
+!public/downloads/*.exe
+
 # Keep the standalone landing page source trackable, but not bundled installers.
 nowtpad-landing/downloads/

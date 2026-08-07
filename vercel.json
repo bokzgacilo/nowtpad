@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/editor",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!assets/|downloads/|notepad-icon.svg|app-screenshot.png|manifest.webmanifest|sw.js|workbox-).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

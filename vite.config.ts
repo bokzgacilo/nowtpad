@@ -16,7 +16,7 @@ export default defineConfig({
         background_color: "#f6f4ef",
         display: "standalone",
         scope: "/",
-        start_url: "/",
+        start_url: "/editor",
         icons: [
           {
             src: "/notepad-icon.svg",
