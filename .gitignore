@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+
+# Vite / frontend build output
+dist/
+build/
+.vite/
+
+# Tauri / Rust build output
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# Cache and temporary files
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+tmp/
+temp/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local packaged release artifacts
+*.dmg
+*.exe
+*.msi
+*.appimage
+*.AppImage
+*.deb
+*.rpm
+
+# Keep the standalone landing page source trackable, but not bundled installers.
+nowtpad-landing/downloads/

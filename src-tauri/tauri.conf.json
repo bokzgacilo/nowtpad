@@ -1,0 +1,104 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "nowtpad",
+  "version": "0.1.0",
+  "identifier": "com.nowtpad.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "nowtpad",
+        "width": 1200,
+        "height": 820,
+        "dragDropEnabled": true,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "minWidth": 760,
+        "minHeight": 520,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Offline-first text editor",
+    "longDescription": "An offline-first macOS text editor for local files.",
+    "fileAssociations": [
+      {
+        "ext": ["txt", "log"],
+        "name": "Plain Text Document",
+        "description": "Plain text document",
+        "mimeType": "text/plain",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown Document",
+        "description": "Markdown document",
+        "mimeType": "text/markdown",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["html", "htm"],
+        "name": "HTML Document",
+        "description": "HTML document",
+        "mimeType": "text/html",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["json"],
+        "name": "JSON Document",
+        "description": "JSON document",
+        "mimeType": "application/json",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["csv"],
+        "name": "CSV Document",
+        "description": "CSV document",
+        "mimeType": "text/csv",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["yaml", "yml"],
+        "name": "YAML Document",
+        "description": "YAML document",
+        "mimeType": "application/yaml",
+        "role": "Editor",
+        "rank": "Alternate"
+      },
+      {
+        "ext": ["toml"],
+        "name": "TOML Document",
+        "description": "TOML document",
+        "mimeType": "text/plain",
+        "role": "Editor",
+        "rank": "Alternate"
+      }
+    ]
+  }
+}

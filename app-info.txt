@@ -1,0 +1,5 @@
+App Name: nowtpad
+Tagline: A free Notepad-style editor for macOS.
+Categories: Productivity, Developer Tools, Utilities
+Description: macOS does not include a simple free Notepad-style app like Windows, and nowtpad is built to fill that gap. It is a lightweight desktop text editor for writing notes, editing code, and working with local text files. It supports multiple tabs, drag-and-drop file opening, native open/save flows, offline draft recovery, light and dark themes, and Monaco-powered syntax highlighting for common text, web, config, and programming file types.
+Tags: notepad, text editor, code editor, notes, offline, local files, tabs, syntax highlighting, Monaco editor, Tauri, productivity, developer tools

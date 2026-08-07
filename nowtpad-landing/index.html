@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nowtpad - Download</title>
+    <meta
+      name="description"
+      content="Download nowtpad, a lightweight Notepad-style editor for Windows, macOS, and the web."
+    />
+    <link rel="icon" href="assets/notepad-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <nav class="nav" aria-label="Main navigation">
+          <a class="brand" href="./" aria-label="nowtpad home">
+            <img src="assets/notepad-icon.svg" alt="" />
+            <span>nowtpad</span>
+          </a>
+          <a class="nav-link" href="#downloads">Downloads</a>
+        </nav>
+
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="release">Latest version 0.1.0</p>
+            <h1 id="page-title">nowtpad</h1>
+            <p class="lede">
+              A lightweight Notepad-style editor for writing notes, editing
+              code, and working with local text files across desktop and web.
+            </p>
+
+            <div class="actions" aria-label="Primary downloads">
+              <a class="button primary" href="#downloads">Download app</a>
+              <a class="button secondary" href="https://nowtpad.vercel.app/">
+                Open web app
+              </a>
+            </div>
+          </div>
+
+          <figure class="product-shot" aria-label="nowtpad app screenshot">
+            <img src="assets/app-screenshot.png" alt="nowtpad editor window" />
+            <figcaption>Clean tabs, local drafts, syntax-aware editing.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="summary" aria-label="What nowtpad does">
+        <div>
+          <h2>Simple text editing, without the clutter.</h2>
+          <p>
+            nowtpad opens common text, code, config, and web files in a fast
+            tabbed editor. Drafts are saved on your device, files can be opened
+            by drag and drop, and the editor works offline when you need it.
+          </p>
+        </div>
+        <ul class="feature-list">
+          <li>Multiple tabs for notes and files</li>
+          <li>Open, save, and save-as flows</li>
+          <li>Light and dark themes</li>
+          <li>Syntax highlighting powered by Monaco</li>
+        </ul>
+      </section>
+
+      <section id="downloads" class="downloads" aria-labelledby="download-title">
+        <div class="section-heading">
+          <p class="release">Choose your platform</p>
+          <h2 id="download-title">Download nowtpad</h2>
+        </div>
+
+        <div class="download-list">
+          <a
+            class="download-item"
+            href="downloads/nowtpad-0.1.0-windows-x64.exe"
+            download
+          >
+            <span>
+              <strong>Windows</strong>
+              <small>Executable installer, x64</small>
+            </span>
+            <b>Download .exe</b>
+          </a>
+
+          <a
+            class="download-item"
+            href="downloads/nowtpad-0.1.0-macos-aarch64.dmg"
+            download
+          >
+            <span>
+              <strong>macOS</strong>
+              <small>DMG for Apple Silicon</small>
+            </span>
+            <b>Download .dmg</b>
+          </a>
+
+          <a class="download-item" href="https://nowtpad.vercel.app/">
+            <span>
+              <strong>Web</strong>
+              <small>Runs in your browser</small>
+            </span>
+            <b>Open web app</b>
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
