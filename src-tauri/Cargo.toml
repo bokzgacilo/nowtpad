@@ -1,6 +1,6 @@
 [package]
 name = "nowtpad"
-version = "0.1.0"
+version = "0.2.0"
 description = "An offline-first text editor for macOS."
 authors = ["nowtpad"]
 edition = "2021"
@@ -17,4 +17,6 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }

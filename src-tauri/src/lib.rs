@@ -1,5 +1,10 @@
 use serde::Serialize;
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Mutex,
+};
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 use tauri::{Emitter, Manager};
 
@@ -50,6 +55,60 @@ fn read_native_paths(paths: Vec<String>) -> NativeOpenResult {
     NativeOpenResult { files, unsupported }
 }
 
+fn run_external_command(command: &mut Command) -> Result<(), String> {
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn reveal_native_file(path: String) -> Result<(), String> {
+    let path_ref = Path::new(&path);
+
+    #[cfg(target_os = "macos")]
+    {
+        return run_external_command(Command::new("open").arg("-R").arg(path_ref));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        return run_external_command(Command::new("explorer").arg(format!("/select,{}", path)));
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let folder = path_ref.parent().unwrap_or(path_ref);
+        return run_external_command(Command::new("xdg-open").arg(folder));
+    }
+}
+
+#[tauri::command]
+fn open_native_file_external(path: String) -> Result<(), String> {
+    let path_ref = Path::new(&path);
+
+    #[cfg(target_os = "macos")]
+    {
+        return run_external_command(Command::new("open").arg(path_ref));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        return run_external_command(
+            Command::new("cmd")
+                .arg("/C")
+                .arg("start")
+                .arg("")
+                .arg(path_ref),
+        );
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        return run_external_command(Command::new("xdg-open").arg(path_ref));
+    }
+}
+
 fn startup_open_paths() -> Vec<String> {
     std::env::args()
         .skip(1)
@@ -66,10 +125,14 @@ pub fn run() {
         .manage(PendingOpenPaths(Mutex::new(startup_open_paths())))
         .invoke_handler(tauri::generate_handler![
             take_initial_open_paths,
-            read_native_paths
+            read_native_paths,
+            reveal_native_file,
+            open_native_file_external
         ])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .build(tauri::generate_context!())
         .expect("error while building nowtpad")
         .run(|_app, _event| {

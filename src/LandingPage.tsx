@@ -1,4 +1,4 @@
-const version = "0.1.0";
+const version = "0.2.0";
 
 export function LandingPage() {
   return (
@@ -84,7 +84,7 @@ export function LandingPage() {
 
           <a
             className="landing-download-item"
-            href="/downloads/nowtpad-0.1.0-macos-aarch64.dmg"
+            href="/downloads/nowtpad-0.2.0-macos-aarch64.dmg"
             download
           >
             <span>

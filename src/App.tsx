@@ -1,4 +1,6 @@
 import Editor from "@monaco-editor/react";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Badge,
@@ -16,13 +18,18 @@ import {
   CircleAlert,
   Code2,
   Download,
+  ExternalLink,
   FileText,
   FilePlus2,
   FolderOpen,
+  FolderSearch,
   HardDriveDownload,
   Maximize2,
   Minus,
+  PanelLeft,
+  PanelTop,
   Save,
+  Settings,
   Sparkles,
   X,
 } from "lucide-react";
@@ -42,7 +49,9 @@ import {
   isTauriApp,
   listenForNativeOpenPaths,
   openNativeFiles,
+  openNativeFileExternal,
   openNativePaths,
+  revealNativeFile,
   saveNativeFile,
   saveNativeFileAs,
   takeInitialOpenPaths,
@@ -58,6 +67,27 @@ type Notice = {
   tone: "info" | "warning" | "error" | "success";
   message: string;
 };
+
+type NavigationLayout = "tabs" | "sidenav";
+
+type TabContextMenu = {
+  tabId: string;
+  x: number;
+  y: number;
+};
+
+type SettingsTab = "editor" | "general";
+
+type UpdateStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "ready"
+  | "error";
+
+const minSideNavWidth = 190;
+const maxSideNavWidth = 420;
 
 const filePickerTypes = [
   {
@@ -108,15 +138,43 @@ function downloadFile(tab: EditorTab) {
   URL.revokeObjectURL(url);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getTabLocationLabel(tab: EditorTab): string {
+  if (tab.nativePath) return tab.nativePath;
+  if (tab.fileHandle) return "Browser file";
+  return "Local draft";
+}
+
 export function App() {
   const nativeApp = isTauriApp();
   const [tabs, setTabs] = useState<EditorTab[]>([createTab()]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [navigationLayout, setNavigationLayout] =
+    useState<NavigationLayout>("tabs");
+  const [tabContextMenu, setTabContextMenu] =
+    useState<TabContextMenu | null>(null);
+  const [sideNavWidth, setSideNavWidth] = useState(240);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("editor");
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [enableFolding, setEnableFolding] = useState(true);
+  const [wordWrap, setWordWrap] = useState(true);
+  const [pendingUpdate, setPendingUpdate] = useState<Update | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>("idle");
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateDownloadProgress, setUpdateDownloadProgress] = useState<
+    string | null
+  >(null);
   const [online, setOnline] = useState(navigator.onLine);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const associatedOpenPathsRef = useRef(new Set<string>());
+  const autoUpdateCheckStartedRef = useRef(false);
   const { colorMode } = useColorMode();
   const monacoTheme = useColorModeValue("vs", "vs-dark");
   const appBg = useColorModeValue("#ffffff", "#0f1115");
@@ -148,6 +206,115 @@ export function App() {
     setNotice(nextNotice);
     window.setTimeout(() => setNotice(null), 4200);
   }, []);
+
+  const checkForAppUpdate = useCallback(
+    async (manual = false) => {
+      if (!nativeApp) {
+        if (manual) {
+          showNotice({
+            tone: "info",
+            message: "App updates are only available in the desktop app.",
+          });
+        }
+        return;
+      }
+
+      if (!navigator.onLine) {
+        if (manual) {
+          showNotice({
+            tone: "warning",
+            message: "Connect to the internet to check for updates.",
+          });
+        }
+        return;
+      }
+
+      setUpdateStatus("checking");
+      setUpdateError(null);
+      setUpdateDownloadProgress(null);
+      if (manual) setUpdateDismissed(false);
+
+      try {
+        const update = await check();
+        if (!update) {
+          setPendingUpdate(null);
+          setUpdateStatus("idle");
+          if (manual) {
+            showNotice({
+              tone: "success",
+              message: "nowtpad is up to date.",
+            });
+          }
+          return;
+        }
+
+        setPendingUpdate(update);
+        setUpdateStatus("available");
+        setUpdateDismissed(false);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Update check failed. Confirm the updater key and endpoint are configured.";
+        setPendingUpdate(null);
+        setUpdateStatus("error");
+        setUpdateError(message);
+        if (manual) {
+          showNotice({ tone: "error", message });
+        }
+      }
+    },
+    [nativeApp, showNotice],
+  );
+
+  const handleInstallUpdate = async () => {
+    if (!pendingUpdate) return;
+
+    try {
+      setUpdateStatus("downloading");
+      setUpdateError(null);
+      setUpdateDownloadProgress("Starting download...");
+
+      let downloaded = 0;
+      let contentLength = 0;
+      await pendingUpdate.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          downloaded = 0;
+          contentLength = event.data.contentLength ?? 0;
+          setUpdateDownloadProgress(
+            contentLength
+              ? `Downloading 0 of ${Math.round(contentLength / 1024 / 1024)} MB`
+              : "Downloading update...",
+          );
+        }
+
+        if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          setUpdateDownloadProgress(
+            contentLength
+              ? `Downloading ${Math.round(downloaded / 1024 / 1024)} of ${Math.round(contentLength / 1024 / 1024)} MB`
+              : "Downloading update...",
+          );
+        }
+
+        if (event.event === "Finished") {
+          setUpdateDownloadProgress("Installing update...");
+        }
+      });
+
+      setUpdateStatus("ready");
+      setUpdateDownloadProgress("Restarting nowtpad...");
+      await relaunch();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not download and install the update.";
+      setUpdateStatus("error");
+      setUpdateError(message);
+      setUpdateDownloadProgress(null);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -202,6 +369,12 @@ export function App() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (!nativeApp || !online || autoUpdateCheckStartedRef.current) return;
+    autoUpdateCheckStartedRef.current = true;
+    void checkForAppUpdate();
+  }, [checkForAppUpdate, nativeApp, online]);
 
   useEffect(() => {
     if (!nativeApp) return;
@@ -448,9 +621,13 @@ export function App() {
 
   const updateActiveTab = (patch: Partial<EditorTab>) => {
     if (!activeTab) return;
+    updateTab(activeTab.id, patch);
+  };
+
+  const updateTab = (id: string, patch: Partial<EditorTab>) => {
     setTabs((current) =>
       current.map((tab) =>
-        tab.id === activeTab.id ? { ...tab, ...patch } : tab,
+        tab.id === id ? { ...tab, ...patch } : tab,
       ),
     );
   };
@@ -461,14 +638,14 @@ export function App() {
     await writable.close();
   };
 
-  const handleSave = async () => {
-    if (!activeTab) return;
+  const handleSave = async (tab = activeTab) => {
+    if (!tab) return;
 
-    if (nativeApp && activeTab.nativePath) {
+    if (nativeApp && tab.nativePath) {
       try {
-        await saveNativeFile(activeTab.nativePath, activeTab.content);
-        updateActiveTab({ dirty: false, restored: false });
-        showNotice({ tone: "success", message: `Saved ${activeTab.name}.` });
+        await saveNativeFile(tab.nativePath, tab.content);
+        updateTab(tab.id, { dirty: false, restored: false });
+        showNotice({ tone: "success", message: `Saved ${tab.name}.` });
       } catch {
         showNotice({
           tone: "error",
@@ -478,11 +655,11 @@ export function App() {
       return;
     }
 
-    if (activeTab.fileHandle) {
+    if (tab.fileHandle) {
       try {
-        await saveToHandle(activeTab, activeTab.fileHandle);
-        updateActiveTab({ dirty: false, restored: false });
-        showNotice({ tone: "success", message: `Saved ${activeTab.name}.` });
+        await saveToHandle(tab, tab.fileHandle);
+        updateTab(tab.id, { dirty: false, restored: false });
+        showNotice({ tone: "success", message: `Saved ${tab.name}.` });
       } catch {
         showNotice({
           tone: "error",
@@ -492,22 +669,22 @@ export function App() {
       return;
     }
 
-    await handleSaveAs();
+    await handleSaveAs(tab);
   };
 
-  const handleSaveAs = async () => {
-    if (!activeTab) return;
+  const handleSaveAs = async (tab = activeTab) => {
+    if (!tab) return;
 
     if (nativeApp) {
       try {
         const path = await saveNativeFileAs(
-          activeTab.name,
-          activeTab.extension,
-          activeTab.content,
+          tab.name,
+          tab.extension,
+          tab.content,
         );
         if (!path) return;
 
-        updateActiveTab({
+        updateTab(tab.id, {
           nativePath: path,
           name: fileNameFromPath(path),
           dirty: false,
@@ -525,18 +702,18 @@ export function App() {
 
     if (window.showSaveFilePicker) {
       try {
-        const type = getFileType(activeTab.extension);
+        const type = getFileType(tab.extension);
         const handle = await window.showSaveFilePicker({
-          suggestedName: activeTab.name,
+          suggestedName: tab.name,
           types: [
             {
               description: type.label,
-              accept: { [type.mime]: [`.${activeTab.extension}`] },
+              accept: { [type.mime]: [`.${tab.extension}`] },
             },
           ],
         });
-        await saveToHandle(activeTab, handle);
-        updateActiveTab({
+        await saveToHandle(tab, handle);
+        updateTab(tab.id, {
           fileHandle: handle,
           name: handle.name,
           dirty: false,
@@ -551,8 +728,8 @@ export function App() {
       return;
     }
 
-    downloadFile(activeTab);
-    updateActiveTab({ dirty: false });
+    downloadFile(tab);
+    updateTab(tab.id, { dirty: false });
     showNotice({
       tone: "info",
       message: "Downloaded a copy because direct save is not supported here.",
@@ -566,6 +743,7 @@ export function App() {
   };
 
   const handleCloseTab = (id: string) => {
+    setTabContextMenu(null);
     setTabs((current) => {
       if (current.length === 1) {
         const tab = createTab();
@@ -582,6 +760,88 @@ export function App() {
       }
       return next;
     });
+  };
+
+  const handleTabContextMenu = (
+    event: React.MouseEvent,
+    tab: EditorTab,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveTabId(tab.id);
+    setTabContextMenu({
+      tabId: tab.id,
+      x: Math.min(event.clientX, window.innerWidth - 210),
+      y: Math.min(event.clientY, window.innerHeight - 190),
+    });
+  };
+
+  const handleRevealTabFile = async (tab: EditorTab) => {
+    setTabContextMenu(null);
+    if (!nativeApp || !tab.nativePath) {
+      showNotice({
+        tone: "warning",
+        message: "Only saved native files can be revealed in a folder.",
+      });
+      return;
+    }
+
+    try {
+      await revealNativeFile(tab.nativePath);
+    } catch {
+      showNotice({
+        tone: "error",
+        message: "Could not reveal the file in its folder.",
+      });
+    }
+  };
+
+  const handleOpenTabFileExternal = async (tab: EditorTab) => {
+    setTabContextMenu(null);
+    if (!nativeApp || !tab.nativePath) {
+      showNotice({
+        tone: "warning",
+        message: "Only saved native files can be opened in an external viewer.",
+      });
+      return;
+    }
+
+    try {
+      await openNativeFileExternal(tab.nativePath);
+    } catch {
+      showNotice({
+        tone: "error",
+        message: "Could not open the file in an external viewer.",
+      });
+    }
+  };
+
+  const handleSideNavResizeStart = (event: React.PointerEvent) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sideNavWidth;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      setSideNavWidth(
+        clamp(
+          startWidth + moveEvent.clientX - startX,
+          minSideNavWidth,
+          maxSideNavWidth,
+        ),
+      );
+    };
+
+    const handlePointerUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
   };
 
   const handleLanguageChange = (extension: SupportedExtension) => {
@@ -652,6 +912,40 @@ export function App() {
       window.removeEventListener("keydown", handleShortcut, { capture: true });
   }, [activeTab, handleOpen, handleSave, handleSaveAs]);
 
+  useEffect(() => {
+    if (!tabContextMenu) return;
+
+    const closeContextMenu = () => setTabContextMenu(null);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeContextMenu();
+    };
+
+    window.addEventListener("click", closeContextMenu);
+    window.addEventListener("contextmenu", closeContextMenu);
+    window.addEventListener("scroll", closeContextMenu, true);
+    window.addEventListener("resize", closeContextMenu);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("click", closeContextMenu);
+      window.removeEventListener("contextmenu", closeContextMenu);
+      window.removeEventListener("scroll", closeContextMenu, true);
+      window.removeEventListener("resize", closeContextMenu);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [tabContextMenu]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [settingsOpen]);
+
   const noticeColor = {
     info: "var(--accent-strong)",
     warning: "#9a5b13",
@@ -666,6 +960,95 @@ export function App() {
       ? "Browser file"
       : "Local draft";
   const dirtyCount = tabs.filter((tab) => tab.dirty).length;
+  const isSideNav = navigationLayout === "sidenav";
+  const nextNavigationLayout = isSideNav ? "tabs" : "sidenav";
+  const contextMenuTab =
+    tabs.find((tab) => tab.id === tabContextMenu?.tabId) ?? null;
+  const updatePromptOpen =
+    Boolean(pendingUpdate) && !updateDismissed && updateStatus !== "idle";
+
+  const renderTabNavItem = (
+    tab: EditorTab,
+    orientation: "horizontal" | "vertical",
+  ) => {
+    const selected = activeTab?.id === tab.id;
+    const vertical = orientation === "vertical";
+
+    return (
+      <HStack
+        cursor="pointer"
+        key={tab.id}
+        as="button"
+        onClick={() => setActiveTabId(tab.id)}
+        onContextMenu={(event) => handleTabContextMenu(event, tab)}
+        align="center"
+        gap={2}
+        w={vertical ? "100%" : undefined}
+        minW={vertical ? 0 : "168px"}
+        maxW={vertical ? "100%" : "260px"}
+        h="38px"
+        px={2}
+        borderRight={vertical ? undefined : "1px solid"}
+        borderRightColor={vertical ? undefined : borderColor}
+        borderBottom={vertical ? "1px solid" : undefined}
+        borderBottomColor={vertical ? borderColor : undefined}
+        bg={selected ? selectedTabBg : inactiveTabBg}
+        color={selected ? selectedTabColor : inactiveTabColor}
+      >
+        <Flex
+          align="center"
+          justify="center"
+          w="22px"
+          h="22px"
+          flex="0 0 auto"
+          borderRadius="5px"
+          bg={fileIconBg}
+          color={fileIconColor}
+        >
+          <FileText size={13} />
+        </Flex>
+
+        <Stack gap={0} minW={0} flex="1" align="stretch">
+          <Text
+            fontSize="xs"
+            fontWeight={selected ? "semibold" : "regular"}
+            lineHeight="1.15"
+            truncate
+            textAlign="left"
+          >
+            {tab.dirty ? "• " : ""}
+            {tab.name}
+          </Text>
+          <Text
+            fontSize="10px"
+            lineHeight="1.1"
+            color={mutedTextColor}
+            truncate
+            textAlign="left"
+          >
+            {getTabLocationLabel(tab)}
+          </Text>
+        </Stack>
+
+        <IconButton
+          aria-label={`Close ${tab.name}`}
+          size="xs"
+          variant="ghost"
+          minW="26px"
+          h="26px"
+          borderRadius="6px"
+          color={mutedTextColor}
+          _hover={{ bg: fileIconBg, color: selectedTabColor }}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleCloseTab(tab.id);
+          }}
+        >
+          <X size={14} />
+        </IconButton>
+      </HStack>
+    );
+  };
 
   return (
     <Flex
@@ -792,7 +1175,7 @@ export function App() {
             rounded={0}
             size="xs"
             variant="subtle"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={!activeTab}
             fontSize="xs"
           >
@@ -804,13 +1187,34 @@ export function App() {
             rounded={0}
             size="xs"
             variant="subtle"
-            onClick={handleSaveAs}
+            onClick={() => void handleSaveAs()}
             disabled={!activeTab}
             fontSize="xs"
           >
             <Download size={6} />
             Save As
           </Button>
+          <IconButton
+            aria-label={`Switch to ${isSideNav ? "horizontal tabs" : "side navigation"}`}
+            aria-pressed={isSideNav}
+            title={`Switch to ${isSideNav ? "horizontal tabs" : "side navigation"}`}
+            rounded={0}
+            size="xs"
+            variant="subtle"
+            onClick={() => setNavigationLayout(nextNavigationLayout)}
+          >
+            {isSideNav ? <PanelTop size={13} /> : <PanelLeft size={13} />}
+          </IconButton>
+          <IconButton
+            aria-label="Open settings"
+            title="Open settings"
+            rounded={0}
+            size="xs"
+            variant="subtle"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings size={13} />
+          </IconButton>
         </HStack>
       </Flex>
 
@@ -823,155 +1227,527 @@ export function App() {
         </HStack>
       )}
 
-      <Flex
-        borderBottom="1px solid"
-        borderBottomColor={borderColor}
-        align="center"
-        gap={0}
-        overflowX="auto"
-        bg={tabStripBg}
-      >
-        {tabs.map((tab) => {
-          const selected = activeTab?.id === tab.id;
-          const tabType = getFileType(tab.extension);
-          return (
-            <HStack
-              cursor="pointer"
-              key={tab.id}
-              as="button"
-              onClick={() => setActiveTabId(tab.id)}
+      {updatePromptOpen && pendingUpdate && (
+        <Flex
+          position="fixed"
+          inset={0}
+          zIndex={40}
+          align="center"
+          justify="center"
+          bg="rgba(15, 23, 42, 0.34)"
+          p={4}
+        >
+          <Box
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="update-title"
+            w="min(440px, 100%)"
+            bg={panelBg}
+            color={selectedTabColor}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+            boxShadow="var(--shadow-soft)"
+            overflow="hidden"
+          >
+            <Flex
               align="center"
-              gap={2}
-              minW="168px"
-              maxW="260px"
-              h="38px"
-              px={2}
-              // border="1px solid"
-              // borderColor={selected ? "var(--line)" : "transparent"}
-              borderRight="1px solid"
-              borderRightColor={borderColor}
-              bg={selected ? selectedTabBg : inactiveTabBg}
-              color={selected ? selectedTabColor : inactiveTabColor}
+              justify="space-between"
+              gap={3}
+              px={3}
+              py={2}
+              borderBottom="1px solid"
+              borderBottomColor={borderColor}
             >
-              <Flex
-                align="center"
-                justify="center"
-                w="22px"
-                h="22px"
-                flex="0 0 auto"
-                borderRadius="5px"
-                bg={fileIconBg}
-                color={fileIconColor}
-              >
-                <FileText size={13} />
-              </Flex>
+              <HStack gap={2} minW={0}>
+                <Sparkles size={15} color="var(--accent-strong)" />
+                <Text id="update-title" fontSize="sm" fontWeight="700">
+                  Update available
+                </Text>
+              </HStack>
+              {updateStatus !== "downloading" && (
+                <IconButton
+                  aria-label="Dismiss update"
+                  size="xs"
+                  variant="ghost"
+                  rounded="5px"
+                  onClick={() => setUpdateDismissed(true)}
+                >
+                  <X size={14} />
+                </IconButton>
+              )}
+            </Flex>
 
-              <Stack gap={0} minW={0} flex="1" align="stretch">
-                <Text
-                  fontSize="xs"
-                  fontWeight={selected ? "semibold" : "regular"}
-                  lineHeight="1.15"
-                  truncate
-                  textAlign="left"
-                >
-                  {tab.dirty ? "• " : ""}
-                  {tab.name}
+            <Stack gap={3} p={3}>
+              <Stack gap={1}>
+                <Text fontSize="sm" fontWeight="650">
+                  nowtpad {pendingUpdate.version} is ready to install.
                 </Text>
-                <Text
-                  fontSize="10px"
-                  lineHeight="1.1"
-                  color={mutedTextColor}
-                  truncate
-                  textAlign="left"
-                >
-                  {tabType.label}
+                <Text fontSize="xs" color={mutedTextColor}>
+                  Current version: {pendingUpdate.currentVersion}
                 </Text>
+                {pendingUpdate.body && (
+                  <Text fontSize="xs" color={mutedTextColor}>
+                    {pendingUpdate.body}
+                  </Text>
+                )}
               </Stack>
 
+              {updateDownloadProgress && (
+                <Text fontSize="xs" color={mutedTextColor}>
+                  {updateDownloadProgress}
+                </Text>
+              )}
+
+              {updateStatus === "error" && updateError && (
+                <Text fontSize="xs" color="#b42318">
+                  {updateError}
+                </Text>
+              )}
+
+              <HStack justify="flex-end" gap={2}>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  rounded="5px"
+                  disabled={updateStatus === "downloading"}
+                  onClick={() => setUpdateDismissed(true)}
+                >
+                  Later
+                </Button>
+                <Button
+                  size="xs"
+                  rounded="5px"
+                  disabled={
+                    updateStatus === "checking" ||
+                    updateStatus === "downloading" ||
+                    updateStatus === "ready"
+                  }
+                  onClick={() => void handleInstallUpdate()}
+                >
+                  {updateStatus === "downloading"
+                    ? "Updating..."
+                    : updateStatus === "ready"
+                      ? "Restarting..."
+                      : "Update Now"}
+                </Button>
+              </HStack>
+            </Stack>
+          </Box>
+        </Flex>
+      )}
+
+      {tabContextMenu && contextMenuTab && (
+        <Box
+          role="menu"
+          position="fixed"
+          left={`${tabContextMenu.x}px`}
+          top={`${tabContextMenu.y}px`}
+          zIndex={20}
+          minW="196px"
+          p={1}
+          bg={panelBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="7px"
+          boxShadow="var(--shadow-soft)"
+          onClick={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <Stack gap={0}>
+            <Button
+              role="menuitem"
+              justifyContent="flex-start"
+              size="xs"
+              variant="ghost"
+              rounded="5px"
+              onClick={() => {
+                setTabContextMenu(null);
+                handleCloseTab(contextMenuTab.id);
+              }}
+            >
+              <X size={13} />
+              Close
+            </Button>
+            <Button
+              role="menuitem"
+              justifyContent="flex-start"
+              size="xs"
+              variant="ghost"
+              rounded="5px"
+              onClick={() => {
+                setTabContextMenu(null);
+                void handleSave(contextMenuTab);
+              }}
+            >
+              <Save size={13} />
+              Save
+            </Button>
+            <Button
+              role="menuitem"
+              justifyContent="flex-start"
+              size="xs"
+              variant="ghost"
+              rounded="5px"
+              onClick={() => {
+                setTabContextMenu(null);
+                void handleSaveAs(contextMenuTab);
+              }}
+            >
+              <Download size={13} />
+              Save As
+            </Button>
+            <Box h="1px" my={1} bg={borderColor} />
+            <Button
+              role="menuitem"
+              justifyContent="flex-start"
+              size="xs"
+              variant="ghost"
+              rounded="5px"
+              disabled={!nativeApp || !contextMenuTab.nativePath}
+              onClick={() => void handleRevealTabFile(contextMenuTab)}
+            >
+              <FolderSearch size={13} />
+              Open in Folder
+            </Button>
+            <Button
+              role="menuitem"
+              justifyContent="flex-start"
+              size="xs"
+              variant="ghost"
+              rounded="5px"
+              disabled={!nativeApp || !contextMenuTab.nativePath}
+              onClick={() => void handleOpenTabFileExternal(contextMenuTab)}
+            >
+              <ExternalLink size={13} />
+              Open in Viewer
+            </Button>
+          </Stack>
+        </Box>
+      )}
+
+      {settingsOpen && (
+        <Flex
+          position="fixed"
+          inset={0}
+          zIndex={30}
+          align="center"
+          justify="center"
+          bg="rgba(15, 23, 42, 0.34)"
+          p={4}
+          onClick={() => setSettingsOpen(false)}
+        >
+          <Box
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+            w="min(560px, 100%)"
+            maxH="min(620px, calc(100vh - 32px))"
+            overflow="hidden"
+            bg={panelBg}
+            color={selectedTabColor}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+            boxShadow="var(--shadow-soft)"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Flex
+              align="center"
+              justify="space-between"
+              gap={3}
+              px={3}
+              py={2}
+              borderBottom="1px solid"
+              borderBottomColor={borderColor}
+            >
+              <HStack gap={2} minW={0}>
+                <Settings size={15} />
+                <Text id="settings-title" fontSize="sm" fontWeight="700">
+                  Settings
+                </Text>
+              </HStack>
               <IconButton
-                aria-label={`Close ${tab.name}`}
+                aria-label="Close settings"
                 size="xs"
                 variant="ghost"
-                minW="26px"
-                h="26px"
-                borderRadius="6px"
-                color={mutedTextColor}
-                _hover={{ bg: fileIconBg, color: selectedTabColor }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleCloseTab(tab.id);
-                }}
+                rounded="5px"
+                onClick={() => setSettingsOpen(false)}
               >
                 <X size={14} />
               </IconButton>
-            </HStack>
-          );
-        })}
-      </Flex>
+            </Flex>
 
-      <Box flex="1" minH={0} position="relative">
-        <Box h="100%" overflow="hidden" bg={panelBg}>
-          {activeTab && (
-            <Editor
-              key={activeTab.id}
-              height="100%"
-              language={activeTab.language}
-              value={activeTab.content}
-              theme={monacoTheme}
-              options={{
-                automaticLayout: true,
-                fontFamily:
-                  "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
-                fontSize: 14,
-                lineHeight: 21,
-                insertSpaces: true,
-                tabSize: getFileType(activeTab.extension)?.tabSize ?? 2,
-                folding: false,
-                glyphMargin: false,
-                lineDecorationsWidth: 8,
-                minimap: { enabled: false },
-                lineNumbers: "on",
-                lineNumbersMinChars: 4,
-                wordWrap: "on",
-                scrollBeyondLastLine: false,
-                formatOnPaste: activeTab.language !== "plaintext",
-                formatOnType: activeTab.language !== "plaintext",
-                padding: { top: 0, bottom: 0 },
-              }}
-              onChange={(value) => {
-                updateActiveTab({ content: value ?? "", dirty: true });
+            <HStack
+              gap={0}
+              p={2}
+              borderBottom="1px solid"
+              borderBottomColor={borderColor}
+              bg={tabStripBg}
+            >
+              <Button
+                aria-pressed={settingsTab === "editor"}
+                size="xs"
+                rounded="5px"
+                variant={settingsTab === "editor" ? "solid" : "ghost"}
+                onClick={() => setSettingsTab("editor")}
+              >
+                <Code2 size={13} />
+                Editor
+              </Button>
+              <Button
+                aria-pressed={settingsTab === "general"}
+                size="xs"
+                rounded="5px"
+                variant={settingsTab === "general" ? "solid" : "ghost"}
+                onClick={() => setSettingsTab("general")}
+              >
+                <Braces size={13} />
+                General
+              </Button>
+            </HStack>
+
+            <Stack gap={3} p={3} overflowY="auto">
+              {settingsTab === "editor" ? (
+                <>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        Minimap
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {showMinimap ? "Visible" : "Hidden"}
+                      </Text>
+                    </Stack>
+                    <Button
+                      aria-pressed={showMinimap}
+                      size="xs"
+                      rounded="5px"
+                      variant={showMinimap ? "solid" : "subtle"}
+                      onClick={() => setShowMinimap((current) => !current)}
+                    >
+                      {showMinimap ? "On" : "Off"}
+                    </Button>
+                  </Flex>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        Code Folding
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {enableFolding ? "Enabled" : "Disabled"}
+                      </Text>
+                    </Stack>
+                    <Button
+                      aria-pressed={enableFolding}
+                      size="xs"
+                      rounded="5px"
+                      variant={enableFolding ? "solid" : "subtle"}
+                      onClick={() => setEnableFolding((current) => !current)}
+                    >
+                      {enableFolding ? "On" : "Off"}
+                    </Button>
+                  </Flex>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        Word Wrap
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {wordWrap ? "Enabled" : "Disabled"}
+                      </Text>
+                    </Stack>
+                    <Button
+                      aria-pressed={wordWrap}
+                      size="xs"
+                      rounded="5px"
+                      variant={wordWrap ? "solid" : "subtle"}
+                      onClick={() => setWordWrap((current) => !current)}
+                    >
+                      {wordWrap ? "On" : "Off"}
+                    </Button>
+                  </Flex>
+                </>
+              ) : (
+                <>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        File Navigation
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {isSideNav ? "Side navigation" : "Horizontal tabs"}
+                      </Text>
+                    </Stack>
+                    <Button
+                      aria-pressed={isSideNav}
+                      size="xs"
+                      rounded="5px"
+                      variant="subtle"
+                      onClick={() => setNavigationLayout(nextNavigationLayout)}
+                    >
+                      {isSideNav ? "Side Nav" : "Tabs"}
+                    </Button>
+                  </Flex>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        Appearance
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {colorMode === "dark" ? "Dark mode" : "Light mode"}
+                      </Text>
+                    </Stack>
+                    <ColorModeButton size="xs" variant="solid" rounded="5px" />
+                  </Flex>
+                  <Flex align="center" justify="space-between" gap={3}>
+                    <Stack gap={0} minW={0}>
+                      <Text fontSize="sm" fontWeight="650">
+                        Updates
+                      </Text>
+                      <Text fontSize="xs" color={mutedTextColor}>
+                        {updateStatus === "checking"
+                          ? "Checking..."
+                          : online
+                            ? "Ready to check"
+                            : "Offline"}
+                      </Text>
+                    </Stack>
+                    <Button
+                      size="xs"
+                      rounded="5px"
+                      variant="subtle"
+                      disabled={updateStatus === "checking" || !online}
+                      onClick={() => void checkForAppUpdate(true)}
+                    >
+                      Check
+                    </Button>
+                  </Flex>
+                </>
+              )}
+            </Stack>
+          </Box>
+        </Flex>
+      )}
+
+      {!isSideNav && (
+        <Flex
+          borderBottom="1px solid"
+          borderBottomColor={borderColor}
+          align="center"
+          gap={0}
+          overflowX="auto"
+          bg={tabStripBg}
+        >
+          {tabs.map((tab) => renderTabNavItem(tab, "horizontal"))}
+        </Flex>
+      )}
+
+      <Flex flex="1" minH={0}>
+        {isSideNav && (
+          <Flex
+            as="nav"
+            aria-label="Open tabs"
+            direction="column"
+            position="relative"
+            w={`${sideNavWidth}px`}
+            minW={`${minSideNavWidth}px`}
+            maxW={`${maxSideNavWidth}px`}
+            overflowY="auto"
+            bg={tabStripBg}
+            borderRight="1px solid"
+            borderRightColor={borderColor}
+          >
+            {tabs.map((tab) => renderTabNavItem(tab, "vertical"))}
+            <Box
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize side navigation"
+              position="absolute"
+              top={0}
+              right={0}
+              w="8px"
+              h="100%"
+              cursor="col-resize"
+              zIndex={1}
+              onPointerDown={handleSideNavResizeStart}
+              _after={{
+                content: '""',
+                position: "absolute",
+                top: 0,
+                right: "3px",
+                w: "1px",
+                h: "100%",
+                bg: borderColor,
               }}
             />
-          )}
-        </Box>
-
-        {isDragging && (
-          <Flex
-            position="absolute"
-            inset={{ base: 2, md: 4 }}
-            align="center"
-            justify="center"
-            bg="rgba(15, 118, 110, 0.16)"
-            border="1px dashed rgba(15, 118, 110, 0.72)"
-            borderRadius="10px"
-            pointerEvents="none"
-          >
-            <HStack
-              gap={2.5}
-              px={4}
-              py={3}
-              bg={dropPanelBg}
-              borderRadius="9px"
-              boxShadow="var(--shadow-soft)"
-            >
-              <Sparkles size={17} color="var(--accent-strong)" />
-              <Text fontWeight="700" color="var(--accent-strong)">
-                Drop text or code files to open them
-              </Text>
-            </HStack>
           </Flex>
         )}
-      </Box>
+
+        <Box flex="1" minW={0} minH={0} position="relative">
+          <Box h="100%" overflow="hidden" bg={panelBg}>
+            {activeTab && (
+              <Editor
+                key={activeTab.id}
+                height="100%"
+                language={activeTab.language}
+                value={activeTab.content}
+                theme={monacoTheme}
+                options={{
+                  automaticLayout: true,
+                  fontFamily:
+                    "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace",
+                  fontSize: 14,
+                  lineHeight: 21,
+                  insertSpaces: true,
+                  tabSize: getFileType(activeTab.extension)?.tabSize ?? 2,
+                  folding: enableFolding && activeTab.language !== "plaintext",
+                  glyphMargin: false,
+                  lineDecorationsWidth: 8,
+                  minimap: { enabled: showMinimap },
+                  lineNumbers: "on",
+                  lineNumbersMinChars: 4,
+                  wordWrap: wordWrap ? "on" : "off",
+                  scrollBeyondLastLine: false,
+                  formatOnPaste: activeTab.language !== "plaintext",
+                  formatOnType: activeTab.language !== "plaintext",
+                  padding: { top: 0, bottom: 0 },
+                }}
+                onChange={(value) => {
+                  updateActiveTab({ content: value ?? "", dirty: true });
+                }}
+              />
+            )}
+          </Box>
+
+          {isDragging && (
+            <Flex
+              position="absolute"
+              inset={{ base: 2, md: 4 }}
+              align="center"
+              justify="center"
+              bg="rgba(15, 118, 110, 0.16)"
+              border="1px dashed rgba(15, 118, 110, 0.72)"
+              borderRadius="10px"
+              pointerEvents="none"
+            >
+              <HStack
+                gap={2.5}
+                px={4}
+                py={3}
+                bg={dropPanelBg}
+                borderRadius="9px"
+                boxShadow="var(--shadow-soft)"
+              >
+                <Sparkles size={17} color="var(--accent-strong)" />
+                <Text fontWeight="700" color="var(--accent-strong)">
+                  Drop text or code files to open them
+                </Text>
+              </HStack>
+            </Flex>
+          )}
+        </Box>
+      </Flex>
 
       <Flex
         as="footer"

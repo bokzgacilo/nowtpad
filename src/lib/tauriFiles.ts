@@ -75,6 +75,14 @@ export async function saveNativeFile(path: string, content: string): Promise<voi
   await writeTextFile(path, content)
 }
 
+export async function revealNativeFile(path: string): Promise<void> {
+  await invoke("reveal_native_file", { path })
+}
+
+export async function openNativeFileExternal(path: string): Promise<void> {
+  await invoke("open_native_file_external", { path })
+}
+
 export async function saveNativeFileAs(
   suggestedName: string,
   extension: SupportedExtension,
