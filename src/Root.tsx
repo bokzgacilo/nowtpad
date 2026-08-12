@@ -1,5 +1,6 @@
 import { Analytics } from "@vercel/analytics/react";
 import { App } from "./App";
+import { DownloadsPage } from "./DownloadsPage";
 import { LandingPage } from "./LandingPage";
 import { isTauriApp } from "./lib/tauriFiles";
 
@@ -11,6 +12,15 @@ export function Root() {
     return (
       <>
         <App />
+        <Analytics />
+      </>
+    );
+  }
+
+  if (path === "/downloads") {
+    return (
+      <>
+        <DownloadsPage />
         <Analytics />
       </>
     );

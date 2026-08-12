@@ -331,6 +331,131 @@ button:active {
   font-size: 14px;
 }
 
+.downloads-page {
+  min-height: 100%;
+}
+
+.downloads-hero {
+  padding: 24px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(251, 250, 246, 0.98) 0%,
+      rgba(251, 250, 246, 0.92) 66%,
+      #fbfaf6 100%
+    ),
+    #fbfaf6;
+}
+
+.downloads-hero-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 82px 0 72px;
+}
+
+.downloads-hero h1 {
+  margin: 0 0 16px;
+  font-size: clamp(56px, 9vw, 118px);
+  line-height: 0.88;
+  letter-spacing: 0;
+}
+
+.downloads-lede {
+  max-width: 650px;
+  margin: 0;
+  color: #5f665f;
+  font-size: clamp(20px, 2.4vw, 28px);
+  line-height: 1.25;
+}
+
+.downloads-browser {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
+  gap: 48px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px 96px;
+}
+
+.downloads-version-panel {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.downloads-version-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.downloads-version {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid rgba(23, 23, 23, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  color: #171717;
+  cursor: pointer;
+  text-align: left;
+}
+
+.downloads-version.active,
+.downloads-version:hover {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: #ffffff;
+}
+
+.downloads-version span {
+  display: grid;
+  gap: 4px;
+}
+
+.downloads-version strong {
+  font-size: 17px;
+}
+
+.downloads-version small {
+  color: #5f665f;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.downloads-release-panel {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.downloads-release-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(23, 23, 23, 0.12);
+}
+
+.downloads-release-heading h2 {
+  margin: 0;
+}
+
+.downloads-release-link {
+  flex: 0 0 auto;
+  color: #0b4f4a;
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.downloads-release-note {
+  max-width: 720px;
+  margin: 22px 0;
+  color: #5f665f;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
 .monaco-editor .line-numbers {
   font-family:
     SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
@@ -444,7 +569,8 @@ button:active {
 
   .landing-hero-grid,
   .landing-summary,
-  .landing-downloads {
+  .landing-downloads,
+  .downloads-browser {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -462,6 +588,14 @@ button:active {
 
   .landing-section-heading {
     position: static;
+  }
+
+  .downloads-version-panel {
+    position: static;
+  }
+
+  .downloads-hero-inner {
+    padding: 58px 0 52px;
   }
 
   .landing-product-shot img {
@@ -505,5 +639,10 @@ button:active {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .downloads-release-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

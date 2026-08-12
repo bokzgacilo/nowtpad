@@ -24,7 +24,7 @@ export function LandingPage() {
             </p>
 
             <div className="landing-actions" aria-label="Primary actions">
-              <a className="landing-button primary" href="#downloads">
+              <a className="landing-button primary" href="/downloads">
                 Download app
               </a>
               <a className="landing-button secondary" href="/editor">
@@ -72,34 +72,32 @@ export function LandingPage() {
         <div className="landing-download-list">
           <a
             className="landing-download-item"
-            href="/downloads/nowtpad-0.1.0-windows-x64.exe"
-            download
+            href="https://github.com/bokzgacilo/nowtpad/releases/tag/v.0.2.0"
           >
             <span>
-              <strong>Windows</strong>
-              <small>Executable installer, x64</small>
+              <strong>Previous</strong>
+              <small>v.0.2.0 release page</small>
             </span>
-            <b>Download .exe</b>
+            <b>Open release</b>
           </a>
 
           <a
             className="landing-download-item"
-            href="/downloads/nowtpad-0.2.0-macos-aarch64.dmg"
-            download
+            href="https://github.com/bokzgacilo/nowtpad/releases/tag/v.0.2.1"
           >
             <span>
               <strong>macOS</strong>
               <small>DMG for Apple Silicon</small>
             </span>
-            <b>Download .dmg</b>
+            <b>Open release</b>
           </a>
 
-          <a className="landing-download-item" href="/editor">
+          <a className="landing-download-item" href="/downloads">
             <span>
-              <strong>Web</strong>
-              <small>Runs in your browser</small>
+              <strong>All versions</strong>
+              <small>Choose a GitHub release</small>
             </span>
-            <b>Open editor</b>
+            <b>Browse</b>
           </a>
         </div>
       </section>
