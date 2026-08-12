@@ -61,15 +61,25 @@ export function DownloadsPage() {
 
   return (
     <main className="landing-page downloads-page">
+      <a className="skip-link" href="#downloads-title">
+        Skip to content
+      </a>
       <section className="downloads-hero" aria-labelledby="downloads-title">
         <nav className="landing-nav" aria-label="Main navigation">
           <a className="landing-brand" href="/" aria-label="nowtpad home">
-            <img src="/notepad-icon.svg" alt="" />
             <span>nowtpad</span>
           </a>
-          <a className="landing-nav-link" href="/editor">
-            Open editor
-          </a>
+          <div className="landing-nav-links">
+            <a className="landing-nav-link" href="/terms">
+              Terms
+            </a>
+            <a className="landing-nav-link" href="/privacy">
+              Privacy
+            </a>
+            <a className="landing-nav-link" href="/editor">
+              Open editor
+            </a>
+          </div>
         </nav>
 
         <div className="downloads-hero-inner">
@@ -139,6 +149,13 @@ export function DownloadsPage() {
           </div>
         </div>
       </section>
+
+      <footer className="site-footer" aria-label="Site links">
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/downloads">Downloads</a>
+        <a href="https://github.com/bokzgacilo/nowtpad">GitHub</a>
+      </footer>
     </main>
   );
 }

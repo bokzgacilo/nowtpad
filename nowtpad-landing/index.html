@@ -16,35 +16,100 @@
       <section class="hero" aria-labelledby="page-title">
         <nav class="nav" aria-label="Main navigation">
           <a class="brand" href="./" aria-label="nowtpad home">
-            <img src="assets/notepad-icon.svg" alt="" />
             <span>nowtpad</span>
           </a>
           <a class="nav-link" href="#downloads">Downloads</a>
         </nav>
 
-        <div class="hero-grid">
-          <div class="hero-copy">
+        <div class="hero-grid app-store-hero">
+          <figure class="product-carousel" aria-label="nowtpad screenshot carousel">
+            <div class="carousel-track" tabindex="0" aria-label="Screenshot carousel">
+              <img
+                id="shot-banner"
+                src="https://nowtpad.vercel.app/screenshots/banner.png"
+                alt="nowtpad editor banner screenshot"
+              />
+              <img
+                id="shot-themes"
+                src="https://nowtpad.vercel.app/screenshots/themes.png"
+                alt="nowtpad theme options screenshot"
+              />
+              <img
+                id="shot-performance"
+                src="https://nowtpad.vercel.app/screenshots/built-with-rust-fast-and-ram-efficient.png"
+                alt="nowtpad performance screenshot highlighting Rust efficiency"
+              />
+            </div>
+            <figcaption class="carousel-caption">
+              <strong>Clean editor</strong>
+              <span>A focused desktop workspace for notes, text, and code.</span>
+            </figcaption>
+            <div class="carousel-dots" aria-label="Choose screenshot">
+              <a href="#shot-banner" aria-label="Show clean editor screenshot"></a>
+              <a href="#shot-themes" aria-label="Show theme options screenshot"></a>
+              <a href="#shot-performance" aria-label="Show performance screenshot"></a>
+            </div>
+          </figure>
+
+          <div class="hero-copy app-store-copy">
             <p class="release">Latest version 0.2.0</p>
-            <h1 id="page-title">nowtpad</h1>
+            <div class="app-title-row">
+              <h1 id="page-title">nowtpad</h1>
+              <span class="app-price">Free</span>
+              <div class="platform-logos" aria-label="Available platforms">
+                <span title="macOS">Mac</span>
+                <span title="Windows">Win</span>
+                <span title="Web">Web</span>
+              </div>
+            </div>
             <p class="lede">
               A lightweight Notepad-style editor for writing notes, editing
               code, and working with local text files across desktop and web.
             </p>
 
+            <ul class="hero-feature-list" aria-label="Key features">
+              <li>Tabbed editing for notes and code</li>
+              <li>Local drafts and file save flows</li>
+              <li>Syntax highlighting with Monaco</li>
+            </ul>
+
             <div class="actions" aria-label="Primary downloads">
-              <a class="button primary" href="https://nowtpad.vercel.app/downloads">
-                Download app
+              <a
+                class="button primary"
+                href="https://nowtpad.vercel.app/downloads/nowtpad-0.2.0-macos-aarch64.dmg"
+                download
+              >
+                Download DMG (v0.2.0)
+              </a>
+              <a
+                class="button secondary"
+                href="https://nowtpad.vercel.app/downloads/nowtpad-0.1.0-windows-x64.exe"
+                download
+              >
+                Download EXE (v0.1.0)
               </a>
               <a class="button secondary" href="https://nowtpad.vercel.app/">
                 Open web app
               </a>
             </div>
-          </div>
 
-          <figure class="product-shot" aria-label="nowtpad app screenshot">
-            <img src="assets/app-screenshot.png" alt="nowtpad editor window" />
-            <figcaption>Clean tabs, local drafts, syntax-aware editing.</figcaption>
-          </figure>
+            <div class="hero-reviews" aria-label="User reviews">
+              <blockquote class="hero-review">
+                <div class="hero-review-stars" aria-label="5 out of 5 stars">
+                  ★★★★★
+                </div>
+                <p>Fast, simple, and exactly what I want from a daily notepad.</p>
+                <cite>Early tester</cite>
+              </blockquote>
+              <blockquote class="hero-review">
+                <div class="hero-review-stars" aria-label="5 out of 5 stars">
+                  ★★★★★
+                </div>
+                <p>The local draft recovery makes it feel dependable.</p>
+                <cite>Desktop user</cite>
+              </blockquote>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -96,13 +161,20 @@
 
           <a class="download-item" href="https://nowtpad.vercel.app/downloads">
             <span>
-              <strong>All versions</strong>
-              <small>Choose a GitHub release</small>
+              <strong>More versions</strong>
+              <small>Browse every available release</small>
             </span>
             <b>Browse</b>
           </a>
         </div>
       </section>
+
+      <footer class="footer" aria-label="Site links">
+        <a href="https://nowtpad.vercel.app/terms">Terms</a>
+        <a href="https://nowtpad.vercel.app/privacy">Privacy</a>
+        <a href="https://nowtpad.vercel.app/downloads">Downloads</a>
+        <a href="https://github.com/bokzgacilo/nowtpad">GitHub</a>
+      </footer>
     </main>
   </body>
 </html>
